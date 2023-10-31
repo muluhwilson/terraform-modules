@@ -1,0 +1,216 @@
+resource "aws_instance" "ec2" {
+  count = "${var.nodes_qty}"
+
+  ami           = "${var.ami}"
+  instance_type = "${var.instance_type}"
+  monitoring    = "${var.enable_detailed_monitoring == "1" ? true : false}"
+  key_name      = "${var.aws_key_pair_name}"
+  subnet_id     = "${element(var.subnet_ids, count.index)}"
+  ebs_optimized = "${var.ebs_optimized}"
+
+  vpc_security_group_ids = ["${var.ec2_sg_list}"]
+  user_data              = "${var.ec2_user_data}"
+  iam_instance_profile   = "${var.iam_instance_profile}"
+
+  tags {
+    "Name" = "${join("-", list(var.tag_project, format("%s%.1d", var.tag_role, count.index + 1), var.tag_service, element(var.tag_zones,count.index), var.tag_environment))}"
+
+    "service"            = "${var.tag_service}"
+    "role"               = "${var.tag_role}"
+    "purpose"            = "${var.tag_purpose_ec2 != "" ? var.tag_purpose_ec2 : format("%s-app", var.tag_service)}"
+    "environment"        = "${var.tag_environment}"
+    "first_owner"        = "${var.tag_first_owner}"
+    "second_owner"       = "${var.tag_second_owner}"
+    "time_frame"         = "${var.tag_timeframe}"
+    "provisioned"        = "terraform"
+    "project"            = "${var.tag_project}"
+    "configured"         = "${var.tag_configured}"
+    "zone"               = "${element(var.tag_zones, count.index)}"
+    "ansible"            = "${var.tag_configured == "ansible" ? "yes" : "no"}"
+    "SEC_ASSETS_GATEWAY" = "${var.tag_sec_assets_gateway}"
+    "SEC_ASSETS"         = "${var.tag_sec_assets}"
+  }
+
+  lifecycle {
+    ignore_changes = ["security_groups", "user_data", "key_name"]
+  }
+}
+
+
+resource "aws_eip" "ec2" {
+  count = "${var.has_public_ip == "0" ? var.has_public_ip : var.nodes_qty}"
+  instance = "${element(aws_instance.ec2.*.id, count.index)}"
+  vpc = "true"
+  tags {
+    "Name" = "${join("-", list(var.tag_project, format("%s%.1d", var.tag_role, count.index + 1), var.tag_service, element(var.tag_zones,count.index), var.tag_environment))}""service" = "${var.tag_service}""role" = "${var.tag_role}""environment" = "${var.tag_environment}""first_owner" = "${var.tag_first_owner}""second_owner" = "${var.tag_second_owner}""time_frame" = "${var.tag_timeframe}""provisioned" = "terraform"
+  }
+}
+
+output "ec2_instance_ids" {
+  value = ["${aws_instance.ec2.*.id}"]
+}
+output "ec2_instance_private_ips" {
+  value = ["${aws_instance.ec2.*.private_ip}"]
+}
+output "ec2_instance_private_dns" {
+  value = ["${aws_instance.ec2.*.private_dns}"]
+}
+output "ec2_instance_subnet_ids" {
+  value = ["${aws_instance.ec2.*.subnet_id}"]
+}
+output "ec2_instance_public_dns" {
+  value = ["${aws_instance.ec2.*.public_dns}"]
+}
+output "ec2_instance_public_ips" {
+  value = ["${aws_instance.ec2.*.public_ip}"]
+}
+output "ec2_instance_availability_zones" {
+  value = ["${aws_instance.ec2.*.availability_zone}"]
+}
+output "ec2_route53_fqdn" {
+  value = ["${aws_route53_record.single_node.*.fqdn}"]
+}
+output "ec2_eip" {
+  value = ["${aws_eip.ec2.*.public_ip}"]
+}
+
+resource "aws_route53_record" "single_node" {
+  zone_id = "${var.ec2_internal_hosted_zone_id}"
+  name = "${join("-", list(format("%s%.1d", var.tag_role, count.index + 1), var.tag_service, element(var.tag_zones,count.index), var.tag_environment))}"
+  type = "CNAME"
+  ttl = "5"
+
+  records = ["${element(aws_instance.ec2.*.private_dns,count.index)}"]
+  count = "${var.nodes_qty}"
+}
+
+variable "nodes_qty" {
+  description = "Number of EC2 instances to create"
+  type = "string" default = 2
+}
+
+variable "ami" {
+  description = "AWS AMI ID"
+  type = "string"
+}
+
+variable "instance_type" {
+  description = "The
+  type of instance(s) to create."
+  type = "string" default = "t2.medium"
+}
+
+variable "enable_detailed_monitoring" {
+  description = "Whether or not to enable extra detailed cloudwatch metrics."
+  type = "string" default = "0"
+}
+
+variable "subnet_ids" {
+  description = "A list of subnet IDs to launch in"
+  type = "list"
+}
+
+variable "ec2_user_data" {
+  description = "Run commands on EC2 instance at launch time or reboot"
+  type = "string"
+}
+
+variable "has_public_ip" {
+  description = "This EC2 has an public IP"
+  type = "string" default = "0"
+}
+
+variable "tag_service" {
+  description = "Service Name such as prm; it is used to contruct Name tag"
+  type = "string"
+}
+
+#variable "tag_name_rendered" {
+# description = "This variable will be rendered which enable invokers to create custom ec2 name based on tags."
+#type = "string"
+#}
+
+variable "tag_role" {
+  description = "Instance Role such as hpx,was; it is used to contruct Name tag"
+  type = "string"
+}
+
+variable "tag_purpose" {
+  description = "The value for the purpose tag."
+  type = "string"
+}
+
+variable "tag_project" {
+  description = "The value for the project tag."
+  type = "string"
+}
+
+variable "tag_environment" {
+  description = "The value for the environment tag."
+  type = "string"
+}
+
+variable "tag_timeframe" {
+  description = "The value for the timeframe tag."
+  type = "string" default = "7x24"
+}
+
+variable "tag_configured" {
+  description = "The value for the configured tag."
+  type = "string" default = "ansible"
+}
+
+variable "tag_first_owner" {
+  description = "The value for the first owner tag."
+  type = "string" default = "A. Doe"
+}
+
+variable "tag_second_owner" {
+  description = "The value for the second owner tag."
+  type = "string" default = "A. Doe"
+}
+
+variable "aws_key_pair_name" {
+  description = "AWS key name to use for instance (ssh)"
+  type = "string"
+}
+
+variable "ec2_sg_list" {
+  description = "A list of security groups IDs associate with"
+  type = "list"
+}
+
+variable "tag_purpose_ec2" {
+  description = "The value for the purpose ec2 tag."
+  type = "string" default = ""
+}
+
+variable "tag_zones" {
+  description = "alias names of Availability Zones"
+  type = "list"
+}
+
+variable "tag_sec_assets_gateway" {
+  description = "GENERAL, DB"
+  type = "string"
+}
+
+variable "tag_sec_assets" {
+  description = "GENERAL, DB"
+  type = "string"
+}
+
+variable "ebs_optimized" {
+  description = "If true, the launched EC2 instance will be EBS-optimized."
+  type = "string" default = "true"
+}
+
+variable "iam_instance_profile" {
+  description = "The IAM Role to apply to the instance."
+  type = "string" default = "EC2_General"
+}
+
+variable "ec2_internal_hosted_zone_id" {
+  description = "The zone ID for a route 53 private hosted zone."
+  type = "string"
+}

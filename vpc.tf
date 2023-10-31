@@ -1,0 +1,21 @@
+module "vpc" {
+  source                        = "./module-vpc"
+  tag_project                   = var.vpc_tag_project
+  tag_environment               = var.vpc_tag_environment
+  prefix_ec2                    = var.vpc_sg_common_prefix
+  vpc_cidr                      = var.vpc_cidr
+  ssh_port                      = var.vpc_ssh_port
+  private_subnets               = var.vpc_private_subnets
+  public_subnets                = var.vpc_public_subnets
+  haproxy_subnets               = var.vpc_haproxy_subnets
+  database_subnets              = var.vpc_database_subnets
+  emr_routetable_id             = var.vpc_emr_routetable_id
+  azs                           = var.vpc_availabilityzones
+  enable_dns_hostnames          = var.vpc_enable_dns_hostnames
+  enable_dns_support            = var.vpc_enable_dns_support
+  enable_nat_gateway            = var.vpc_enable_nat_gateway
+  flow_log_cloudwatch_log_group = var.vpc_flow_log_cloudwatch_log_group
+  terraform_state_bucket        = var.vpc_terraform_state_bucket
+  account_owner_ip              = var.vpc_account_owner_ip
+  region                        = var.region
+}

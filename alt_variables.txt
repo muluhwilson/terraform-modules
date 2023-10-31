@@ -1,0 +1,55 @@
+variable "project" {
+  default = "gw"
+}
+variable "region" {
+  default = "us-west-2"
+}
+variable "env_short" {
+  default = "qa"
+}
+variable "s3_remote_bucket_region" {
+  default = "us-west-2"
+}
+variable "s3_remote_bucket_name" {
+  default = "kpgw-qa"
+}
+variable "aws_profile" {
+  default = "b2b-local"
+}
+variable "identifier" {
+  description = "ID for DB instance"
+  default     = "identifier"
+}
+variable "storage" {
+  description = "Storage in GB"
+  default     = "300"
+}
+variable "engine" {
+  default = "mysql"
+}
+variable "instance_class" {
+  description = "Instance class"
+  default     = "db.t2.medium"
+}
+variable "db_subnet_group" {
+  default = ""
+}
+variable "db_name" {
+  default = "getwell"
+}
+variable "username" {
+  default = "dbadmin"
+}
+variable "password" {
+  default = "kpPA$$w0rdProd"
+}
+variable "credstash_table" {
+  default = "credential-store"
+}
+variable "retention_period" {
+  #max is 35
+  default = 35
+}
+variable "monitoring_interval" {
+  default = 30
+}
